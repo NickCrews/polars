@@ -240,8 +240,12 @@ pub enum FunctionExpr {
     SetSortedFlag(IsSorted),
     #[cfg(feature = "ffi_plugin")]
     FfiPlugin {
+        /// Shared library.
         lib: Arc<str>,
+        /// Identifier in the shared lib.
         symbol: Arc<str>,
+        /// JSON serialized keyword arguments.
+        kwargs: Arc<std::ffi::CString>,
     },
 }
 
@@ -279,7 +283,12 @@ impl Hash for FunctionExpr {
             #[cfg(feature = "dtype-categorical")]
             FunctionExpr::Categorical(f) => f.hash(state),
             #[cfg(feature = "ffi_plugin")]
-            FunctionExpr::FfiPlugin { lib, symbol } => {
+            FunctionExpr::FfiPlugin {
+                lib,
+                symbol,
+                kwargs,
+            } => {
+                kwargs.hash(state);
                 lib.hash(state);
                 symbol.hash(state);
             },
@@ -714,8 +723,17 @@ impl From<FunctionExpr> for SpecialEq<Arc<dyn SeriesUdf>> {
             },
             SetSortedFlag(sorted) => map!(dispatch::set_sorted_flag, sorted),
             #[cfg(feature = "ffi_plugin")]
-            FfiPlugin { lib, symbol, .. } => unsafe {
-                map_as_slice!(plugin::call_plugin, lib.as_ref(), symbol.as_ref())
+            FfiPlugin {
+                lib,
+                symbol,
+                kwargs,
+            } => unsafe {
+                map_as_slice!(
+                    plugin::call_plugin,
+                    lib.as_ref(),
+                    symbol.as_ref(),
+                    kwargs.as_c_str()
+                )
             },
         }
     }
