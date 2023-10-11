@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["string_len_bytes","string_len_chars"]};
